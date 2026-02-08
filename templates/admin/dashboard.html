@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}管理后台 · 仪表盘{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    .admin-nav {
+        background:var(--dark-blue); padding:12px 16px; display:flex; align-items:center; gap:16px; overflow-x:auto;
+    }
+    .admin-nav a {
+        color:rgba(255,255,255,0.7); font-size:14px; text-decoration:none; white-space:nowrap; padding:6px 14px;
+        border-radius:8px; transition:all 0.2s;
+    }
+    .admin-nav a:hover, .admin-nav a.active { background:rgba(255,255,255,0.12); color:#fff; }
+    .admin-nav .brand { font-weight:700; color:#fff; font-size:16px; margin-right:auto; }
+    .stat-card {
+        background:#fff; border-radius:14px; padding:20px; flex:1; min-width:140px;
+        box-shadow:0 2px 12px rgba(0,0,0,0.04);
+    }
+    .stat-card .label { font-size:13px; color:var(--text-grey); }
+    .stat-card .value { font-size:28px; font-weight:800; margin-top:4px; }
+    .chart-wrap { background:#fff; border-radius:14px; padding:20px; box-shadow:0 2px 12px rgba(0,0,0,0.04); margin-top:16px; }
+    .order-row {
+        display:flex; align-items:center; padding:12px 0; border-bottom:1px solid #f5f5f5; gap:12px; font-size:14px;
+    }
+    .status-tag { padding:3px 10px; border-radius:12px; font-size:12px; font-weight:600; }
+    .status-Pending { background:#fff3cd; color:#856404; }
+    .status-Cooking { background:#fde2e2; color:#c0392b; }
+    .status-Served { background:#d4edda; color:#155724; }
+    .status-Paid { background:#d1ecf1; color:#0c5460; }
+    .status-Cancelled { background:#f0f0f0; color:#999; }
+    .action-btn {
+        padding:4px 12px; border-radius:8px; font-size:12px; font-weight:600;
+        border:none; cursor:pointer; transition:all 0.15s;
+    }
+    .action-btn:active { transform:scale(0.95); }
+</style>
+{% endblock %}
+
+{% block body %}
+<nav class="admin-nav">
+    <span class="brand">🏮 国庆餐馆</span>
+    <a href="/admin/" class="active">仪表盘</a>
+    <a href="/admin/orders">订单</a>
+    <a href="/admin/dishes">菜品</a>
+    <a href="/admin/tables">桌台</a>
+    <a href="/admin/reviews">评价</a>
+    <a href="/admin/logout" style="color:rgba(255,255,255,0.4);">退出</a>
+</nav>
+
+<div style="max-width:900px;margin:0 auto;padding:20px 16px;">
+    <!-- 统计卡片 -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;" id="statsRow">
+        <div class="stat-card">
+            <div class="label">今日营业额</div>
+            <div class="value text-gold font-price" id="statRevenue">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">今日订单</div>
+            <div class="value" style="color:var(--dark-blue);" id="statOrders">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">待处理</div>
+            <div class="value" style="color:var(--alert);" id="statPending">--</div>
+        </div>
+    </div>
+
+    <!-- 收入趋势图 -->
+    <div class="chart-wrap">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--dark-blue);">近7天收入趋势</h3>
+        <canvas id="revenueChart" height="200"></canvas>
+    </div>
+
+    <!-- 活跃订单 -->
+    <div style="margin-top:20px;">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--dark-blue);">当前活跃订单</h3>
+        <div id="ordersList" style="background:#fff;border-radius:14px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.04);"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chart = null;
+
+async function loadStats() {
+    const res = await fetch('/admin/api/stats');
+    const d = await res.json();
+    document.getElementById('statRevenue').textContent = '¥' + d.today_revenue.toFixed(2);
+    document.getElementById('statOrders').textContent = d.today_orders;
+    document.getElementById('statPending').textContent = d.pending_orders;
+}
+
+async function loadChart() {
+    const res = await fetch('/admin/api/revenue_trend');
+    const data = await res.json();
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => d.date),
+            datasets: [{
+                label: '收入 (元)',
+                data: data.map(d => d.revenue),
+                borderColor: '#D4AF37',
+                backgroundColor: 'rgba(212,175,55,0.1)',
+                borderWidth: 2.5,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#D4AF37',
+                pointRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: '#f5f5f5' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+async function loadOrders() {
+    const res = await fetch('/admin/api/orders?status=active');
+    const orders = await res.json();
+    const el = document.getElementById('ordersList');
+    if (!orders.length) { el.innerHTML = '<div style="text-align:center;color:#ccc;padding:24px;">暂无活跃订单</div>'; return; }
+    el.innerHTML = orders.map(o => `
+        <div class="order-row">
+            <span style="font-weight:700;min-width:60px;">${o.table_name}</span>
+            <span style="color:var(--text-grey);font-size:12px;">${o.created_at.slice(11,16)}</span>
+            <span class="font-price" style="font-weight:600;color:var(--gold);">¥${o.total_amount.toFixed(1)}</span>
+            <span class="status-tag status-${o.status}" style="margin-left:auto;">${statusText(o.status)}</span>
+            ${o.status === 'Pending' ? `<button class="action-btn" style="background:#28A745;color:#fff;" onclick="updateStatus(${o.id},'Cooking')">接单</button>` : ''}
+            ${o.status === 'Cooking' ? `<button class="action-btn" style="background:#17a2b8;color:#fff;" onclick="updateStatus(${o.id},'Served')">上菜</button>` : ''}
+            ${o.status === 'Served' ? `<button class="action-btn" style="background:var(--gold);color:#fff;" onclick="updateStatus(${o.id},'Paid')">结账</button>` : ''}
+        </div>
+    `).join('');
+}
+
+function statusText(s) {
+    return { Pending:'待接单', Cooking:'制作中', Served:'已上菜', Paid:'已支付', Cancelled:'已取消' }[s] || s;
+}
+
+async function updateStatus(orderId, status) {
+    await fetch(`/admin/api/orders/${orderId}/status`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ status })
+    });
+    loadOrders();
+    loadStats();
+}
+
+// 初始化 + 每15秒轮询
+loadStats(); loadChart(); loadOrders();
+setInterval(() => { loadStats(); loadOrders(); }, 15000);
+</script>
+{% endblock %}

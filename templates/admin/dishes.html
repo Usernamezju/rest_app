@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}管理后台 · 菜品管理{% endblock %}
+{% block extra_head %}
+<style>
+    .admin-nav { background:var(--dark-blue); padding:12px 16px; display:flex; align-items:center; gap:16px; overflow-x:auto; }
+    .admin-nav a { color:rgba(255,255,255,0.7); font-size:14px; text-decoration:none; white-space:nowrap; padding:6px 14px; border-radius:8px; transition:all 0.2s; }
+    .admin-nav a:hover, .admin-nav a.active { background:rgba(255,255,255,0.12); color:#fff; }
+    .admin-nav .brand { font-weight:700; color:#fff; font-size:16px; margin-right:auto; }
+    .section { background:#fff; border-radius:14px; padding:20px; margin-bottom:16px; box-shadow:0 2px 12px rgba(0,0,0,0.04); }
+    .section h3 { font-size:15px; font-weight:700; margin-bottom:12px; color:var(--dark-blue); }
+    .form-row { display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap; align-items:end; }
+    .form-group { display:flex; flex-direction:column; gap:4px; }
+    .form-group label { font-size:12px; color:var(--text-grey); }
+    .form-group input, .form-group select, .form-group textarea {
+        padding:8px 12px; border:1.5px solid #e0e0e0; border-radius:8px; font-size:14px; outline:none;
+        transition:border 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--gold); }
+    .cat-tag { display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:16px; background:#f0f0f0; font-size:13px; margin:2px; }
+    .cat-tag .del { cursor:pointer; color:#999; font-weight:700; }
+    .cat-tag .del:hover { color:var(--alert); }
+    .dish-row {
+        display:flex; align-items:center; padding:10px 0; border-bottom:1px solid #f5f5f5; gap:10px; font-size:14px;
+    }
+    .dish-row img { width:48px; height:48px; border-radius:8px; object-fit:cover; }
+    .dish-row .placeholder-img { width:48px; height:48px; border-radius:8px; background:linear-gradient(135deg,#f5e6b8,#f0ece3); display:flex; align-items:center; justify-content:center; font-size:20px; }
+    .toggle-btn { width:44px; height:24px; border-radius:12px; border:none; cursor:pointer; position:relative; transition:background 0.2s; }
+    .toggle-btn::after { content:''; position:absolute; width:20px; height:20px; border-radius:50%; background:#fff; top:2px; transition:left 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+    .toggle-btn.on { background:var(--success); }
+    .toggle-btn.on::after { left:22px; }
+    .toggle-btn.off { background:#ccc; }
+    .toggle-btn.off::after { left:2px; }
+    .sm-btn { padding:4px 10px; border-radius:6px; font-size:12px; border:none; cursor:pointer; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block body %}
+<nav class="admin-nav">
+    <span class="brand">🏮 国庆餐馆</span>
+    <a href="/admin/">仪表盘</a>
+    <a href="/admin/orders">订单</a>
+    <a href="/admin/dishes" class="active">菜品</a>
+    <a href="/admin/tables">桌台</a>
+    <a href="/admin/reviews">评价</a>
+    <a href="/admin/logout" style="color:rgba(255,255,255,0.4);">退出</a>
+</nav>
+<div style="max-width:700px;margin:0 auto;padding:20px 16px;">
+
+    <!-- 分类管理 -->
+    <div class="section">
+        <h3>菜品分类</h3>
+        <div id="catList" style="margin-bottom:10px;"></div>
+        <div class="form-row">
+            <div class="form-group" style="flex:1;">
+                <input type="text" id="newCatName" placeholder="新分类名称">
+            </div>
+            <button class="btn-gold" style="height:38px;font-size:13px;" onclick="addCategory()">添加分类</button>
+        </div>
+    </div>
+
+    <!-- 添加菜品 -->
+    <div class="section">
+        <h3>添加新菜品</h3>
+        <form id="addDishForm" enctype="multipart/form-data">
+            <div class="form-row">
+                <div class="form-group" style="flex:2;"><label>菜名</label><input type="text" name="name" required></div>
+                <div class="form-group" style="flex:1;"><label>价格</label><input type="number" name="price" step="0.1" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label>分类</label>
+                    <select name="category_id" id="catSelect"><option value="">未分类</option></select>
+                </div>
+                <div class="form-group" style="flex:1;"><label>图片</label><input type="file" name="image" accept="image/*"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+                <label>描述</label><textarea name="description" rows="2" placeholder="口味、食材等"></textarea>
+            </div>
+            <button type="submit" class="btn-gold" style="font-size:13px;">添加菜品</button>
+        </form>
+    </div>
+
+    <!-- 菜品列表 -->
+    <div class="section">
+        <h3>全部菜品</h3>
+        <div id="dishList"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ─── 分类 ───
+async function loadCategories() {
+    const res = await fetch('/admin/api/categories');
+    const cats = await res.json();
+    document.getElementById('catList').innerHTML = cats.map(c =>
+        `<span class="cat-tag">${c.name} <span class="del" onclick="delCat(${c.id})">×</span></span>`
+    ).join('');
+    const sel = document.getElementById('catSelect');
+    sel.innerHTML = '<option value="">未分类</option>' + cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+async function addCategory() {
+    const name = document.getElementById('newCatName').value.trim();
+    if (!name) return;
+    await fetch('/admin/api/categories', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name}) });
+    document.getElementById('newCatName').value = '';
+    loadCategories();
+}
+
+async function delCat(id) {
+    if (!confirm('删除该分类？其下菜品将变为未分类。')) return;
+    await fetch(`/admin/api/categories/${id}`, { method:'DELETE' });
+    loadCategories(); loadDishes();
+}
+
+// ─── 菜品 ───
+async function loadDishes() {
+    // Reload page data
+    const res = await fetch('/admin/api/categories');
+    const cats = await res.json();
+    const catMap = {}; cats.forEach(c => catMap[c.id] = c.name);
+
+    // 获取所有菜品 via the menu API
+    const menuRes = await fetch('/api/menu');
+    const menuData = await menuRes.json();
+    let allDishes = [];
+    menuData.forEach(cat => cat.dishes.forEach(d => allDishes.push(d)));
+    // 也获取未上架的（通过admin dishes page的预载入数据）
+    // 简化：直接用页面模板数据
+    const el = document.getElementById('dishList');
+    if (!allDishes.length) { el.innerHTML = '<div style="text-align:center;color:#ccc;padding:20px;">暂无菜品</div>'; return; }
+    el.innerHTML = allDishes.map(d => `
+        <div class="dish-row">
+            ${d.image_path ? `<img src="/static/uploads/${d.image_path}">` : '<div class="placeholder-img">🍽</div>'}
+            <div style="flex:1;">
+                <div style="font-weight:600;">${d.name}</div>
+                <div style="font-size:12px;color:var(--text-grey);">${catMap[d.category_id]||'未分类'} · 销量${d.sales_count}</div>
+            </div>
+            <span class="font-price text-gold" style="font-weight:700;">¥${d.price.toFixed(1)}</span>
+            <button class="toggle-btn ${d.is_available?'on':'off'}" onclick="toggleDish(${d.id},${!d.is_available})"></button>
+            <button class="sm-btn" style="background:#DC3545;color:#fff;" onclick="delDish(${d.id})">删除</button>
+        </div>
+    `).join('');
+}
+
+document.getElementById('addDishForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const fd = new FormData(this);
+    await fetch('/admin/api/dishes', { method:'POST', body:fd });
+    this.reset();
+    loadDishes();
+});
+
+async function toggleDish(id, available) {
+    const fd = new FormData();
+    fd.append('is_available', available ? 'true' : 'false');
+    await fetch(`/admin/api/dishes/${id}`, { method:'PUT', body:fd });
+    loadDishes();
+}
+
+async function delDish(id) {
+    if (!confirm('确定删除该菜品？')) return;
+    await fetch(`/admin/api/dishes/${id}`, { method:'DELETE' });
+    loadDishes();
+}
+
+loadCategories();
+loadDishes();
+</script>
+{% endblock %}

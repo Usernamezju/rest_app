@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}订单状态 #{{ order.id }}{% endblock %}
+{% block body %}
+<div style="max-width:420px;margin:0 auto;padding:24px 16px;">
+    <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:48px;margin-bottom:8px;">
+            {% if order.status == 'Pending' %}⏳{% elif order.status == 'Cooking' %}🔥{% elif order.status == 'Served' %}✅{% elif order.status == 'Paid' %}💰{% else %}❌{% endif %}
+        </div>
+        <h2 style="font-size:20px;font-weight:700;">订单 #{{ order.id }}</h2>
+        <p style="color:var(--text-grey);font-size:14px;margin-top:4px;">
+            {{ order.table.name if order.table else '未知桌号' }} · {{ order.created_at.strftime('%H:%M') }}
+        </p>
+    </div>
+    <div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,0.05);">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--dark-blue);">菜品明细</div>
+        {% for item in order.items %}
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:14px;">
+            <span>{{ item.dish.name if item.dish else '已删除' }} × {{ item.quantity }}</span>
+            <span class="text-gold font-price" style="font-weight:600;">¥{{ "%.1f"|format(item.price_snapshot * item.quantity) }}</span>
+        </div>
+        {% endfor %}
+        <div style="display:flex;justify-content:space-between;padding:12px 0 0;font-size:16px;font-weight:700;">
+            <span>合计</span>
+            <span class="text-gold font-price">¥{{ "%.2f"|format(order.total_amount) }}</span>
+        </div>
+    </div>
+    {% if order.customer_note %}
+    <div style="background:#fffbe6;border-radius:10px;padding:12px;margin-top:12px;font-size:13px;color:#8a6d0b;">
+        📝 备注：{{ order.customer_note }}
+    </div>
+    {% endif %}
+    <div style="text-align:center;margin-top:24px;">
+        <span style="display:inline-block;padding:6px 18px;border-radius:20px;font-size:13px;font-weight:600;
+            {% if order.status == 'Pending' %}background:#fff3cd;color:#856404;
+            {% elif order.status == 'Cooking' %}background:#fde2e2;color:#c0392b;
+            {% elif order.status == 'Served' %}background:#d4edda;color:#155724;
+            {% elif order.status == 'Paid' %}background:#d1ecf1;color:#0c5460;
+            {% else %}background:#f0f0f0;color:#999;{% endif %}
+        ">
+            {% if order.status == 'Pending' %}等待接单{% elif order.status == 'Cooking' %}正在制作{% elif order.status == 'Served' %}已上菜{% elif order.status == 'Paid' %}已支付{% else %}已取消{% endif %}
+        </span>
+    </div>
+    <a href="/" style="display:block;text-align:center;margin-top:20px;color:var(--gold);font-size:14px;text-decoration:none;">← 返回菜单</a>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}管理后台 · 登录{% endblock %}
+{% block body %}
+<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg-light);">
+    <div style="background:#fff;border-radius:20px;padding:40px 32px;width:90%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,0.08);text-align:center;">
+        <div style="font-size:40px;margin-bottom:8px;">🏮</div>
+        <h2 style="font-size:20px;font-weight:700;color:var(--dark-blue);margin-bottom:4px;">国庆餐馆</h2>
+        <p style="font-size:13px;color:var(--text-grey);margin-bottom:24px;">管理后台</p>
+        {% if error %}
+        <div style="background:#fde2e2;color:#c0392b;padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:16px;">{{ error }}</div>
+        {% endif %}
+        <form method="POST">
+            <input type="password" name="password" placeholder="请输入管理密码"
+                style="width:100%;padding:12px 16px;border:2px solid #e8e8e8;border-radius:12px;font-size:15px;outline:none;transition:border 0.2s;"
+                onfocus="this.style.borderColor='#D4AF37'" onblur="this.style.borderColor='#e8e8e8'">
+            <button type="submit" class="btn-gold" style="width:100%;margin-top:16px;padding:12px;font-size:15px;border-radius:12px;">
+                进入后台
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

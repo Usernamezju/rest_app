@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}国庆餐馆{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-light: #F5E6B8;
+            --dark-blue: #2C3E50;
+            --bg-light: #F8F9FA;
+            --surface: #FFFFFF;
+            --success: #28A745;
+            --alert: #DC3545;
+            --text-grey: #6C757D;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Helvetica Neue", sans-serif;
+            background: var(--bg-light);
+            color: #333;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-price {
+            font-family: "DIN Alternate", "DIN", "Helvetica Neue", "Arial", monospace;
+            font-variant-numeric: tabular-nums;
+        }
+        .text-gold { color: var(--gold); }
+        .bg-gold { background-color: var(--gold); }
+        .bg-dark-blue { background-color: var(--dark-blue); }
+        .border-gold { border-color: var(--gold); }
+        .btn-gold {
+            background: var(--gold);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-gold:hover { background: #c9a030; transform: scale(1.02); }
+        .btn-gold:active { transform: scale(0.97); }
+        .glass {
+            background: rgba(255,255,255,0.72);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .card-shadow {
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .fade-in { animation: fadeIn 0.35s ease-out; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 0; height: 0; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% block body %}{% endblock %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>
