@@ -44,6 +44,14 @@ class Table(db.Model):
     qr_code_str = db.Column(db.String(100), default='')
     orders = db.relationship('Order', backref='table', lazy=True)
 
+    # --- 新增这个方法 ---
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'qr_code_str': self.qr_code_str
+        }
+
 
 class Order(db.Model):
     __tablename__ = 'orders'
@@ -94,3 +102,13 @@ class Review(db.Model):
     rating = db.Column(db.Integer, default=5)
     comment = db.Column(db.Text, default='')
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+    # --- 也建议为 Review 新增这个方法，防止评价页面报错 ---
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'order_id': self.order_id,
+            'rating': self.rating,
+            'comment': self.comment,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
