@@ -12,6 +12,7 @@ admin_bp = Blueprint('admin', __name__)
 def admin_required(f):
     """简易管理员验证装饰器"""
     from functools import wraps
+
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get('admin_logged_in'):
@@ -55,7 +56,8 @@ def api_stats():
     ).scalar() or 0.0
 
     today_orders = Order.query.filter(Order.created_at >= today_start).count()
-    pending_orders = Order.query.filter(Order.status.in_(['Pending', 'Cooking'])).count()
+    pending_orders = Order.query.filter(
+        Order.status.in_(['Pending', 'Cooking'])).count()
 
     return jsonify({
         'today_revenue': round(today_revenue, 2),
@@ -159,7 +161,8 @@ def add_dish():
     image_file = request.files.get('image')
     image_path = ''
     if image_file:
-        image_path = process_upload_image(image_file, current_app.config['UPLOAD_FOLDER'])
+        image_path = process_upload_image(
+            image_file, current_app.config['UPLOAD_FOLDER'])
 
     dish = Dish(
         name=name, price=price,
@@ -189,10 +192,12 @@ def update_dish(dish_id):
     if image_file and image_file.filename:
         # 删除旧图
         if dish.image_path:
-            old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], dish.image_path)
+            old_path = os.path.join(
+                current_app.config['UPLOAD_FOLDER'], dish.image_path)
             if os.path.exists(old_path):
                 os.remove(old_path)
-        dish.image_path = process_upload_image(image_file, current_app.config['UPLOAD_FOLDER'])
+        dish.image_path = process_upload_image(
+            image_file, current_app.config['UPLOAD_FOLDER'])
 
     db.session.commit()
     return jsonify(dish.to_dict())
@@ -203,7 +208,8 @@ def update_dish(dish_id):
 def delete_dish(dish_id):
     dish = Dish.query.get_or_404(dish_id)
     if dish.image_path:
-        img_path = os.path.join(current_app.config['UPLOAD_FOLDER'], dish.image_path)
+        img_path = os.path.join(
+            current_app.config['UPLOAD_FOLDER'], dish.image_path)
         if os.path.exists(img_path):
             os.remove(img_path)
     db.session.delete(dish)
@@ -219,28 +225,53 @@ def reviews_page():
     return render_template('admin/reviews.html', reviews=reviews)
 
 
-# ─── 桌台管理 ───
+# ─── 桌台管理界面 ───
 @admin_bp.route('/tables')
 @admin_required
 def tables_page():
-    tables = Table.query.order_by(Table.id).all()
-    return render_template('admin/tables.html', tables=tables)
+    """这是浏览器访问的页面地址：http://localhost:5000/admin/tables"""
+    # 只需要返回模板，数据由下面的 GET API 异步加载
+    return render_template('admin/tables.html')
 
+# ─── 桌台管理 API (供前端 JS 调用) ───
+
+@admin_bp.route('/api/tables', methods=['GET'])
+@admin_required
+def get_tables_api():
+    """获取桌台列表"""
+    tables = Table.query.order_by(Table.id).all()
+    return jsonify([t.to_dict() for t in tables])
 
 @admin_bp.route('/api/tables', methods=['POST'])
 @admin_required
 def add_table():
+    """添加新桌台"""
     data = request.get_json()
+    if not data or 'name' not in data:
+        return jsonify({'error': '名称不能为空'}), 400
     t = Table(name=data['name'], qr_code_str=data.get('qr_code_str', ''))
     db.session.add(t)
     db.session.commit()
-    return jsonify({'id': t.id, 'name': t.name})
-
+    return jsonify(t.to_dict())
 
 @admin_bp.route('/api/tables/<int:table_id>', methods=['DELETE'])
 @admin_required
 def delete_table(table_id):
+    """删除桌台"""
     t = Table.query.get_or_404(table_id)
     db.session.delete(t)
     db.session.commit()
     return jsonify({'success': True})
+
+@admin_bp.route('/api/tables/<int:table_id>', methods=['PUT'])
+@admin_required
+def update_table(table_id):
+    """修改桌台信息"""
+    t = Table.query.get_or_404(table_id)
+    data = request.get_json()
+    if 'name' in data:
+        t.name = data['name']
+    if 'qr_code_str' in data:
+        t.qr_code_str = data['qr_code_str']
+    db.session.commit()
+    return jsonify(t.to_dict())
